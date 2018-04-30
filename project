@@ -1,0 +1,50 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+LFP_data = pd.read_csv('C:\\Users\\BAMA\\Desktop\\Excel_Practice3d.csv')
+for PRE, POST in LFP_data.iterrows():
+    LFP_data['CHANGE'] = LFP_data['POST']/LFP_data['PRE']
+Pre = LFP_data['PRE']
+Change = LFP_data['CHANGE']
+
+Pre2 = Pre[:, np.newaxis]
+
+#splitting our data set into 25% and 75%
+from sklearn.model_selection import train_test_split
+Pre2_train, Pre2_test, Change_train, Change_test = train_test_split(Pre2, Change, test_size=0.25, random_state=42)
+
+#make a regression 
+from sklearn.linear_model import LinearRegression
+regressor = LinearRegression()
+regressor.fit(Pre2_train, Change_train)
+
+#print regression
+print('coefficients: ', regressor.coef_)
+print('y-axis intercept: ', regressor.intercept_)
+print('Regression: % Change =', regressor.coef_,'*Pre-stim response amplitude +', regressor.intercept_)
+
+#plotting regression to fit training data
+min_pt = Pre2.min() * regressor.coef_[0] + regressor.intercept_
+max_pt = Pre2.max() * regressor.coef_[0] + regressor.intercept_
+plt.plot([Pre2.min(), Pre2.max()], [min_pt, max_pt], label="regression")
+plt.plot(Pre2_train, Change_train, 'o', label="train data");
+
+#predicting target data
+Change_pred_train = regressor.predict(Pre2_train)
+#plt.plot(Pre2_train, Change_pred_train, 'o', label="train prediction")
+
+#try test set
+Change_pred_test = regressor.predict(Pre2_test)
+plt.plot(Pre2_test, Change_test, 'o', label="test data")
+#plt.plot(Pre2_test, Change_pred_test, 'o', label="test prediction")
+
+
+#evaluate preditction quantitatively
+R2 = regressor.score(Pre2_test, Change_test)
+
+plt.title("Relationship between LFP amplitude and plasticity")
+plt.xlabel("Pre-stim LFP amplitude")
+plt.ylabel("Percent change")
+plt.legend(loc='best');
+plt.show()
+print("R squared =", R2)
