@@ -33,7 +33,7 @@ plt.plot(Pre2_train, Change_train, 'o', label="train data");
 Change_pred_train = regressor.predict(Pre2_train)
 #plt.plot(Pre2_train, Change_pred_train, 'o', label="train prediction")
 
-#try test set
+#try test set here
 Change_pred_test = regressor.predict(Pre2_test)
 plt.plot(Pre2_test, Change_test, 'o', label="test data")
 #plt.plot(Pre2_test, Change_pred_test, 'o', label="test prediction")
