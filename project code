@@ -7,7 +7,7 @@ from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import train_test_split
 
 # Retrieve '.csv' files containing electrophysiology data in TBS and Cocaine conditions.
-LFP_data_TBS = pd.read_csv('C:\\Users\\BAMA\\Desktop\\Excel_Practice.csv')
+LFP_data_TBS = pd.read_csv('C:\\Users\\BAMA\\Desktop\\Excel_Practice4.csv')
 LFP_data_COC = pd.read_csv('C:\\Users\\BAMA\\Desktop\\Excel_practice_Cocaine.csv')
 
 # Plot a boxplot for the data to observe data points in 4 distributions: PreTBS, PostTBS, PreCOC, PostCOC
@@ -20,6 +20,7 @@ plt.boxplot(data)
 plt.xticks([1, 2, 3, 4], ['PreTBS', 'PostTBS', 'PreCOC', 'PostCOC'])
 plt.ylabel('LFP magnitude (mV)')
 plt.xlabel('Plasticity protocol')
+plt.title("Data LFP magnitude")
 plt.show()
 
 # Calculate mean and standard deviation for preTBS, postTBS, preCocaine and postCocaine and 
@@ -32,12 +33,11 @@ LFP_data_COC['StDevPre'] = LFP_data_COC['PRE'].std()
 LFP_data_COC['MeanPost'] = LFP_data_COC['POST'].mean()
 LFP_data_COC['StDevPost'] = LFP_data_COC['POST'].std()
 
-
 # Write a function to detect 3 standard deviation (SD) outliers from 'PRE' column of a DataFrame
 def remove_outliers_fromPRE(row): 
     Pre = row['PRE']
     if Pre < (row['MeanPre'] - (3 * row['StDevPre'])) or Pre > (row['MeanPre'] + (3 * row['StDevPre'])):
-        return NaN
+        return
     else:
         return Pre
 
@@ -45,9 +45,13 @@ def remove_outliers_fromPRE(row):
 def remove_outliers_fromPOST(row):
     Post = row['POST']
     if Post < (row['MeanPost'] - (3 * row['StDevPost'])) or Post > (row['MeanPost'] + (3* row['StDevPost'])):
-        return NaN
+        return
     else:
         return Post
+
+    ####################################################################################################################
+#############################the box plots, etc only seem to work if we return _ instead of NaN in the loops above
+
 
 # Apply a function to TBS and Cocaine dataframe create columns 'cPRE' and 'cPOST' with NaN Value instead of outliers of 'PRE' and 'POST'
 LFP_data_TBS['cPRE'] = LFP_data_TBS.apply(remove_outliers_fromPRE,  axis = 1)
@@ -64,13 +68,10 @@ for row_index, row in LFP_data_TBS.iterrows():
 
 # Drop the rows in TBS DataFrame that contain 'NaN' values: LFP_data_TBS_cleaned. 
 LFP_data_TBS_cleaned = LFP_data_TBS.dropna(axis=0, how = 'any')
-⁄
+
 #Add a new column 'cCHANGE' to the Cocaine Dataframe that contains the percentage increase in magnitude due to Cocaine.
 for row_index, row in LFP_data_COC.iterrows():
     LFP_data_COC['cCHANGE'] = LFP_data_COC['POST']/LFP_data_COC['PRE']*100
-
-# Drop the rows in Cocaine DataFrame that contain 'NaN' values: LFP_data_COC_cleaned
-LFP_data_COC_cleaned = LFP_data_COC.dropna(axis=0, how = 'any')
 
 #print(LFP_data_TBS_cleaned.head(3))
 #print(LFP_data_COC_cleaned.head(3))
@@ -88,6 +89,7 @@ plt.boxplot(data)
 plt.xticks([1, 2, 3, 4], ['cPreTBS', 'cPostTBS', 'cPreCOC', 'cPostCOC'])
 plt.ylabel('LFP magnitude (mV)')
 plt.xlabel('Plasticity protocol')
+plt.title("Cleaned data LFP magnitude")
 plt.show()
 
 # Generate a bargraph for LFP magnitude before (Pre) and after (Post) TBS stimulation for cleaned data
@@ -122,19 +124,10 @@ plt.title('TBS plasticity')
 plt.xlabel('Pre TBS')
 plt.ylabel('% change induced by TBS')
 plt.show()
-  
-# Generate a scatterplot with the percentage change in LFP magnitude for Cocaine
-plt.scatter(LFP_data_COC_cleaned['cPRE'], LFP_data_COC_cleaned['cCHANGE'])
-plt.title('Cocaine plasticity')
-plt.xlabel('Pre Cocaine')
-plt.ylabel('% change induced by Cocaine')
-plt.show()
 
-# From TBS and Cocaine dataframes generate numpy arrays for Pre and Change
+# From TBS dataframes generate numpy arrays for Pre and Change
 PreTBS = LFP_data_TBS_cleaned['cPRE'].values
-PreCOC = LFP_data_COC_cleaned['cPRE'].values
 ChangeTBS = LFP_data_TBS_cleaned['cCHANGE'].values
-ChangeCOC = LFP_data_COC_cleaned['cCHANGE'].values
 
 #reshape the numpy arrays
 PreTBS = PreTBS.reshape(-1, 1)
@@ -142,11 +135,14 @@ PreCOC = PreCOC.reshape(-1, 1)
 ChangeTBS = ChangeTBS.reshape(-1, 1)
 ChangeCOC = ChangeCOC.reshape(-1, 1)
 
+#splitting our data set into 25% and 75%
+from sklearn.model_selection import train_test_split
+PreTBS_train, PreTBS_test, ChangeTBS_train, ChangeTBS_test = train_test_split(PreTBS, ChangeTBS, test_size=0.25, random_state=42)
 
 #make a regression 
 from sklearn.linear_model import LinearRegression
 regressor = LinearRegression()
-regressor.fit(LFP_data_TBS_cleaned['cPRE'], LFP_data_TBS_cleaned['cCHANGE'])
+regressor.fit(PreTBS_train, ChangeTBS_train)
 
 #print regression
 print('coefficients: ', regressor.coef_)
@@ -154,24 +150,21 @@ print('y-axis intercept: ', regressor.intercept_)
 print('Regression: % Change =', regressor.coef_,'*Pre-stim response amplitude +', regressor.intercept_)
 
 #plotting regression to fit training data
-min_pt = LFP_data_TBS_cleaned['cPRE'].min() * regressor.coef_[0] + regressor.intercept_
-max_pt = LFP_data_TBS_cleaned['cPRE'].max() * regressor.coef_[0] + regressor.intercept_
-plt.plot([LFP_data_TBS_cleaned['cPRE'].min(), LFP_data_TBS_cleaned['cPRE'].max()], [min_pt, max_pt], label="regression")
-##
-plt.plot(Pre2_train, Change_train, 'o', label="train data");
+min_pt = PreTBS.min() * regressor.coef_[0] + regressor.intercept_
+max_pt = PreTBS.max() * regressor.coef_[0] + regressor.intercept_
+plt.plot([PreTBS.min(), PreTBS.max()], [min_pt, max_pt], label="regression")
+plt.plot(PreTBS_train, ChangeTBS_train, 'o', label="train data");
+plt.show()
 
 #predicting target data
-Change_pred_train = regressor.predict(Pre2_train)
-#plt.plot(Pre2_train, Change_pred_train, 'o', label="train prediction")
+Change_pred_train = regressor.predict(PreTBS_train)
 
 #try test set
-Change_pred_test = regressor.predict(Pre2_test)
-plt.plot(Pre2_test, Change_test, 'o', label="test data")
-#plt.plot(Pre2_test, Change_pred_test, 'o', label="test prediction")
-
+Change_pred_test = regressor.predict(PreTBS_test)
+plt.plot(PreTBS_test, ChangeTBS_test, 'o', label="test data")
 
 #evaluate preditction quantitatively
-R2 = regressor.score(Pre2_test, Change_test)
+R2 = regressor.score(PreTBS_test, ChangeTBS_test)
 
 plt.title("Relationship between LFP amplitude and plasticity")
 plt.xlabel("Pre-stim LFP amplitude")
